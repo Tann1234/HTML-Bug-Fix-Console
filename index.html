@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BITS Pilani Digital – Advanced Grading Console V2.0</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<style>
+/* ===== BASE STYLES ===== */
+body {
+  margin: 0;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #f5f3ff;
+  color: #111827;
+}
+.container {
+  max-width: 1180px;
+  margin: auto;
+  padding: 16px;
+}
+header {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 14px 18px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.06);
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+header h1 {
+  margin: 0;
+  font-size: 20px;
+  color: #312e81;
+}
+header h2 {
+  margin: 2px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #5b3cc4;
+}
+
+/* ===== CONTROLS ===== */
+.controls {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+input, select {
+  padding: 9px 12px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 13px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.file-guidance {
+  grid-column: 1 / -1;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #4b5563;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+.file-guidance summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #312e81;
+}
+.file-guidance p {
+  margin: 6px 0 0;
+  line-height: 1.4;
+}
+
+button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #5b3cc4;
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+button:hover {
+  background: #4c1d95;
+}
+button.secondary {
+  background: #e5e7eb;
+  color: #111827;
+}
+button.secondary:hover {
+  background: #d1d5db;
+}
+button:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 14px;
+}
+
+.panel {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.08);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: 10px;
+}
+.stat {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 8px 4px;
+  font-size: 11px;
+  color: #64748b;
+  text-align: center;
+}
+.stat b {
+  display: block;
+  font-size: 15px;
+  color: #1e293b;
+  margin-top: 2px;
+}
+
+.grade-summary {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12px;
+}
+.grade-summary span {
+  background: #ede9fe;
+  color: #4c1d95;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  transition: transform .25s ease, background-color .25s ease;
+}
+
+.grade-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+.grade {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px;
+  background: #fafafa;
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+.grade strong {
+  color: #312e81;
+}
+.min select { background: #fff7ed; }
+.max select { background: #eff6ff; }
+
+.error {
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 8px;
+  min-height: 18px;
+}
+.notice {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #065f46;
+  font-weight: 500;
+}
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  align-items: center;
+}
+
+/* Roster Table */
+.roster-container {
+  margin-top: 14px;
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+table.roster {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+table.roster th, table.roster td {
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid #f3f4f6;
+}
+table.roster th {
+  background: #f9fafb;
+  position: sticky;
+  top: 0;
+  color: #4b5563;
+}
+
+/* ANIMATIONS */
+.grade.lift {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,.12);
+}
+button.enabled {
+  transform: scale(1.02);
+}
+.grade-summary span.pulse {
+  transform: scale(1.08);
+  background: #ddd6fe;
+}
+
+/* TIMER CLOCK */
+.timer-wrapper {
+  margin-top: 14px;
+  display: flex;
+  justify-content: center;
+}
+.timer-clock {
+  width: 80px;
+  height: 80px;
+  position: relative;
+}
+.timer-clock svg {
+  transform: rotate(-90deg);
+}
+.timer-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  color: #5b3cc4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<header>
+  <div>
+    <h1>BITS Pilani Digital</h1>
+    <h2>Advanced Grading Console V2.0</h2>
+  </div>
+</header>
+
+<div class="controls">
+  <input id="instructor" placeholder="Instructor Name (Mandatory)">
+  <input type="file" id="file" accept=".xls,.xlsx">
+  <select id="course"><option value="">Select a course to begin</option></select>
+
+  <details class="file-guidance">
+    <summary>Marks File Format Guidance</summary>
+    <p>
+      The uploaded Excel file should contain three columns: <b>BITS ID</b>, <b>Course</b>, and <b>Total Marks</b>.
+      Total Marks must be whole numbers (0–100). Students awarded an <b>NC</b> grade should be omitted.
+    </p>
+  </details>
+</div>
+
+<div id="welcome" class="notice"></div>
+
+<div class="workspace">
+  <!-- ANALYTICS PANEL -->
+  <div class="panel">
+    <canvas id="hist" width="390" height="220"></canvas>
+
+    <div class="stats">
+      <div class="stat">Min Marks<br><b id="min">-</b></div>
+      <div class="stat">Max Marks<br><b id="max">-</b></div>
+      <div class="stat">Average<br><b id="avg">-</b></div>
+      <div class="stat">Median<br><b id="med">-</b></div>
+    </div>
+
+    <div class="grade-summary" id="gradeSummary"></div>
+  </div>
+
+  <!-- GRADING CONFIGURATION PANEL -->
+  <div class="panel">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <span style="font-size:13px; font-weight:700; color:#312e81;">Grade Cutoff Ranges</span>
+      <div>
+        <button type="button" class="secondary" id="presetStrict" style="padding:4px 8px; font-size:11px;">Strict</button>
+        <button type="button" class="secondary" id="presetLenient" style="padding:4px 8px; font-size:11px;">Lenient</button>
+      </div>
+    </div>
+
+    <div class="grade-grid" id="grades"></div>
+    <div class="error" id="rangeError"></div>
+
+    <div class="actions">
+      <button class="secondary" id="resetRanges">Reset Default</button>
+      <button id="download" disabled>Finalize & Download CSV</button>
+    </div>
+
+    <!-- Student Roster Search -->
+    <div style="margin-top:12px;">
+      <input type="text" id="rosterSearch" placeholder="Search Roster by BITS ID..." style="padding:6px 10px; font-size:11px;">
+      <div class="roster-container">
+        <table class="roster">
+          <thead>
+            <tr><th>BITS ID</th><th>Marks</th><th>Grade</th></tr>
+          </thead>
+          <tbody id="rosterBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="timer-wrapper">
+      <div class="timer-clock">
+        <svg width="80" height="80">
+          <circle cx="40" cy="40" r="35" stroke="#ede9fe" stroke-width="5" fill="none"/>
+          <circle id="timerArc" cx="40" cy="40" r="35"
+            stroke="#5b3cc4" stroke-width="5" fill="none"
+            stroke-linecap="round"
+            stroke-dasharray="220"
+            stroke-dashoffset="220"/>
+        </svg>
+        <div class="timer-text" id="timerText">00:00</div>
+      </div>
+    </div>
+
+    <div id="thankyou" class="notice"></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+/* ===== TIMER IMPLEMENTATION ===== */
+const gradingStartTime = Date.now();
+let timerInterval = null;
+const circumference = 2 * Math.PI * 35;
+
+function updateTimerDisplay() {
+  const arc = document.getElementById("timerArc");
+  const text = document.getElementById("timerText");
+  const elapsed = Date.now() - gradingStartTime;
+  const min = Math.floor(elapsed / 60000);
+  const sec = Math.floor((elapsed % 60000) / 1000);
+
+  text.innerText = String(min).padStart(2, "0") + ":" + String(sec).padStart(2, "0");
+  const progress = Math.min(elapsed / 3600000, 1);
+  arc.style.strokeDashoffset = circumference * (1 - progress);
+}
+
+function startTimer() {
+  updateTimerDisplay(); // Initial execution without 1s lag
+  timerInterval = setInterval(updateTimerDisplay, 1000);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  startTimer();
+});
+
+/* ===== CORE APPLICATION LOGIC ===== */
+const GRADES = ["A", "A-", "B", "B-", "C", "C-", "D", "E"];
+const DEFAULTS = {
+  "A": [80, 100], "A-": [70, 79], "B": [60, 69], "B-": [50, 59],
+  "C": [40, 49], "C-": [30, 39], "D": [20, 29], "E": [0, 19]
+};
+
+let data = [];
+let previousSummary = {};
+let finalizeCount = 0;
+
+// Element References
+const fileInput = document.getElementById("file");
+const courseSelect = document.getElementById("course");
+const instructorInput = document.getElementById("instructor");
+const welcomeMsg = document.getElementById("welcome");
+const gradesContainer = document.getElementById("grades");
+const rangeError = document.getElementById("rangeError");
+const downloadBtn = document.getElementById("download");
+const resetRangesBtn = document.getElementById("resetRanges");
+const rosterBody = document.getElementById("rosterBody");
+const rosterSearch = document.getElementById("rosterSearch");
+
+fileInput.onchange = e => {
+  if (!e.target.files.length) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    const wb = XLSX.read(ev.target.result, { type: "binary" });
+    data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+    
+    // Normalize numeric values
+    data.forEach(d => {
+      d["Total Marks"] = Number(d["Total Marks"]) || 0;
+    });
+
+    // Reset and deduplicate course list
+    courseSelect.innerHTML = '<option value="">Select a course to begin</option>';
+    const uniqueCourses = Array.from(new Set(data.map(d => d.Course).filter(Boolean)));
+    
+    uniqueCourses.forEach(c => {
+      courseSelect.add(new Option(c, c));
+    });
+  };
+  r.readAsBinaryString(e.target.files[0]);
+};
+
+courseSelect.onchange = () => {
+  if (!instructorInput.value.trim()) {
+    alert("Please enter instructor name first.");
+    courseSelect.value = "";
+    return;
+  }
+  welcomeMsg.innerText = `Welcome ${instructorInput.value.toUpperCase()}. Reviewing course: ${courseSelect.value}.`;
+  buildGradeUI();
+  updateAll();
+};
+
+function cascadeMaxFrom(index) {
+  for (let i = index + 1; i < GRADES.length; i++) {
+    const prevMin = +document.getElementById(GRADES[i - 1] + "min").value;
+    document.getElementById(GRADES[i] + "max").value = Math.max(0, prevMin - 1);
+  }
+}
+
+function buildGradeUI() {
+  gradesContainer.innerHTML = "";
+  GRADES.forEach((g, idx) => {
+    const card = document.createElement("div");
+    card.className = "grade";
+
+    const minSel = document.createElement("select");
+    const maxSel = document.createElement("select");
+
+    for (let i = 0; i <= 100; i++) {
+      minSel.add(new Option(i, i, i === DEFAULTS[g][0], i === DEFAULTS[g][0]));
+      maxSel.add(new Option(i, i, i === DEFAULTS[g][1], i === DEFAULTS[g][1]));
+    }
+
+    minSel.id = g + "min";
+    maxSel.id = g + "max";
+
+    minSel.onchange = () => {
+      card.classList.add("lift");
+      setTimeout(() => card.classList.remove("lift"), 150);
+      cascadeMaxFrom(idx);
+      updateAll();
+    };
+
+    maxSel.onchange = () => {
+      card.classList.add("lift");
+      setTimeout(() => card.classList.remove("lift"), 150);
+      updateAll();
+    };
+
+    card.innerHTML = `<strong>${g}</strong><div class="min">Min</div>`;
+    card.querySelector(".min").appendChild(minSel);
+
+    const maxDiv = document.createElement("div");
+    maxDiv.className = "max";
+    maxDiv.innerText = "Max";
+    maxDiv.appendChild(maxSel);
+    card.appendChild(maxDiv);
+
+    gradesContainer.appendChild(card);
+  });
+}
+
+resetRangesBtn.onclick = () => {
+  if (!confirm("Reset all grade ranges to default settings?")) return;
+  GRADES.forEach(g => {
+    document.getElementById(g + "min").value = DEFAULTS[g][0];
+    document.getElementById(g + "max").value = DEFAULTS[g][1];
+  });
+  updateAll();
+};
+
+document.getElementById("presetStrict").onclick = () => {
+  const strict = { "A":[85,100], "A-":[75,84], "B":[65,74], "B-":[55,64], "C":[45,54], "C-":[35,44], "D":[25,34], "E":[0,24] };
+  GRADES.forEach(g => {
+    document.getElementById(g + "min").value = strict[g][0];
+    document.getElementById(g + "max").value = strict[g][1];
+  });
+  updateAll();
+};
+
+document.getElementById("presetLenient").onclick = () => {
+  const lenient = { "A":[70,100], "A-":[60,69], "B":[50,59], "B-":[40,49], "C":[30,39], "C-":[20,29], "D":[10,19], "E":[0,9] };
+  GRADES.forEach(g => {
+    document.getElementById(g + "min").value = lenient[g][0];
+    document.getElementById(g + "max").value = lenient[g][1];
+  });
+  updateAll();
+};
+
+function validateRanges() {
+  for (let i = 0; i < GRADES.length; i++) {
+    const g = GRADES[i];
+    const minV = +document.getElementById(g + "min").value;
+    const maxV = +document.getElementById(g + "max").value;
+    if (minV >= maxV) return `Grade ${g}: Min score must be strictly less than Max.`;
+    if (i > 0) {
+      const prevMin = +document.getElementById(GRADES[i - 1] + "min").value;
+      if (maxV !== prevMin - 1) return `Gap/Overlap between ${GRADES[i-1]} and${g}. Ranges must be continuous.`;
+    }
+  }
+  return "";
+}
+
+function updateAll() {
+  const err = validateRanges();
+  rangeError.innerText = err;
+  downloadBtn.disabled = !!err;
+  if (!err) downloadBtn.classList.add("enabled");
+  else downloadBtn.classList.remove("enabled");
+
+  drawHistogram();
+  computeStats();
+  computeGradeSummary();
+  renderRoster();
+}
+
+function drawHistogram() {
+  const canvas = document.getElementById("hist");
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, 390, 220);
+
+  const marks = data.filter(d => d.Course === courseSelect.value).map(d => d["Total Marks"]);
+  if (!marks.length) return;
+
+  let bins = Array(10).fill(0);
+  marks.forEach(m => bins[Math.min(9, Math.floor(m / 10))]++);
+
+  const maxVal = Math.max(...bins, 1);
+
+  bins.forEach((v, i) => {
+    const h = (v / maxVal) * 140;
+    ctx.fillStyle = "#5b3cc4";
+    ctx.fillRect(30 + i * 34, 180 - h, 26, h);
+    ctx.fillStyle = "#111827";
+    ctx.font = "9px Segoe UI";
+    ctx.fillText(`${i*10}-${i*10+9}`, 30 + i * 34, 195);
+  });
+}
+
+function computeStats() {
+  const m = data.filter(d => d.Course === courseSelect.value)
+    .map(d => d["Total Marks"]).sort((a, b) => a - b);
+
+  if (!m.length) {
+    document.getElementById("min").textContent = "-";
+    document.getElementById("max").textContent = "-";
+    document.getElementById("avg").textContent = "-";
+    document.getElementById("med").textContent = "-";
+    return;
+  }
+
+  // Corrected Min and Max mappings
+  document.getElementById("min").textContent = m[0];
+  document.getElementById("max").textContent = m[m.length - 1];
+  document.getElementById("avg").textContent = (m.reduce((a, b) => a + b, 0) / m.length).toFixed(1);
+  document.getElementById("med").textContent = m.length % 2 ? m[Math.floor(m.length / 2)] : ((m[m.length / 2 - 1] + m[m.length / 2]) / 2).toFixed(1);
+}
+
+function computeGradeSummary() {
+  let counts = {};
+  GRADES.forEach(g => counts[g] = 0);
+
+  const courseData = data.filter(d => d.Course === courseSelect.value);
+  courseData.forEach(d => {
+    for (const g of GRADES) {
+      const mi = +document.getElementById(g + "min").value;
+      const ma = +document.getElementById(g + "max").value;
+      if (d["Total Marks"] >= mi && d["Total Marks"] <= ma) {
+        counts[g]++;
+        break;
+      }
+    }
+  });
+
+  const summaryContainer = document.getElementById("gradeSummary");
+  summaryContainer.innerHTML = "";
+  GRADES.forEach(g => {
+    const span = document.createElement("span");
+    span.textContent = `${g}:${counts[g]}`;
+    if (previousSummary[g] !== undefined && previousSummary[g] !== counts[g]) {
+      span.classList.add("pulse");
+      setTimeout(() => span.classList.remove("pulse"), 300);
+    }
+    summaryContainer.appendChild(span);
+    previousSummary[g] = counts[g];
+  });
+}
+
+function renderRoster() {
+  const query = rosterSearch.value.toLowerCase();
+  rosterBody.innerHTML = "";
+
+  const courseData = data.filter(d => d.Course === courseSelect.value && String(d["BITS ID"]).toLowerCase().includes(query));
+
+  courseData.forEach(d => {
+    let assigned = "E";
+    for (const g of GRADES) {
+      const mi = +document.getElementById(g + "min").value;
+      const ma = +document.getElementById(g + "max").value;
+      if (d["Total Marks"] >= mi && d["Total Marks"] <= ma) {
+        assigned = g;
+        break;
+      }
+    }
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td><b>${d["BITS ID"]}</b></td><td>${d["Total Marks"]}</td><td><span style="background:#ede9fe; padding:2px 6px; border-radius:4px; font-weight:bold; color:#4c1d95;">${assigned}</span></td>`;
+    rosterBody.appendChild(tr);
+  });
+}
+
+rosterSearch.oninput = renderRoster;
+
+downloadBtn.onclick = () => {
+  finalizeCount++;
+  clearInterval(timerInterval);
+
+  const elapsed = Date.now() - gradingStartTime;
+  const minT = Math.floor(elapsed / 60000);
+  const secT = Math.floor((elapsed % 60000) / 1000);
+
+  let csv = `\uFEFFInstructor,${instructorInput.value}\nCourse,${courseSelect.value}\n\nBITS ID,Total Marks,Grade\n`;
+  data.filter(d => d.Course === courseSelect.value).forEach(d => {
+    for (const g of GRADES) {
+      const mi = +document.getElementById(g + "min").value;
+      const ma = +document.getElementById(g + "max").value;
+      if (d["Total Marks"] >= mi && d["Total Marks"] <= ma) {
+        csv += `"${d["BITS ID"]}",${d["Total Marks"]},${g}\n`;
+        break;
+      }
+    }
+  });
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${courseSelect.value}_Grades.csv`;
+  a.click();
+
+  const suffix = finalizeCount === 1 ? "first" : finalizeCount === 2 ? "second" : finalizeCount === 3 ? "third" : finalizeCount + "th";
+  document.getElementById("thankyou").innerText = `Grading completed in ${minT} min ${secT} sec on your${suffix} attempt.`;
+};
+</script>
+</body>
+</html>
